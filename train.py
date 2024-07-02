@@ -11,12 +11,19 @@ from stockfish import Stockfish
 
 stockfish_path = "/Users/nickhausleitner/Documents/stockfish/stockfish-macos-m1-apple-silicon"
 stockfish = Stockfish(stockfish_path)
-stockfish.set_depth(12)
+stockfish.set_depth(15)
 stockfish.update_engine_parameters({"Threads": 1})
 print(stockfish.get_parameters())
 colours = [chess.WHITE, chess.BLACK]
 pieces = [chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN, chess.KING]
 gc.enable()
+board = chess.Board()
+unique_fens = set()
+
+"""
+with open('unique_fens.pkl', 'rb') as f:
+    unique_fens = pickle.load(f)
+"""
 
 
 def fen_to_vec(fen):
@@ -35,14 +42,6 @@ def fen_to_vec(fen):
         en_passant_vector[en_passant_index] = 1
     input_vector = np.concatenate([board_vector, to_move_vector, castling_vector, en_passant_vector])
     return input_vector
-
-
-unique_fens = set()
-
-"""
-with open('unique_fens.pkl', 'rb') as f:
-    unique_fens = pickle.load(f)
-"""
 
 
 def create_model1(shape):
@@ -94,20 +93,19 @@ def create_model2(shape):
     return model
 
 
-board = chess.Board()
-
-
 def generate_random_fen(games):
     board = chess.Board()
     fens = []
     for i in range(games):
-        while not board.is_game_over():
+        while not board.is_checkmate():
             move = np.random.choice(list(board.legal_moves))
             board.push(move)
             fen = board.fen()
             if fen not in unique_fens:
                 fens.append(fen)
                 unique_fens.add(fen)
+            if board.is_insufficient_material() or board.can_claim_draw():
+                break
         board.reset()
     return fens
 
@@ -123,6 +121,11 @@ def generate_random_input(games):
             vec = fen_to_vec(fen)
             vectors.append(vec)
             evaluations.append(evaluation['value'])
+        else:
+            vec = fen_to_vec(fen)
+            vectors.append(vec)
+            mate_in = evaluation['value']
+            evaluations.append(2800 - mate_in*100 if mate_in >= 1 else -2800 - mate_in*100)
     vectors = np.array(vectors)
     evaluations = np.array(evaluations)
     return vectors, evaluations
@@ -130,19 +133,18 @@ def generate_random_input(games):
 
 def train(games, epochs):
     for epoch in range(epochs):
-        X_train, y_train = generate_random_input(games)
+        x_train, y_train = generate_random_input(games)
 
-        print("Epoche" + str(epoch + 1))
+        print("Epoch" + str(epoch + 1))
         print("Length of unique_fens: " + str(len(unique_fens)))
         print("Size of unique_fens (in MB): " + str(sys.getsizeof(unique_fens) / (1024 * 1024)))
 
-        model.fit(X_train, y_train, epochs=1, batch_size=8)
-        print()
+        model.fit(x_train, y_train, epochs=1, batch_size=8)
         print()
 
-        if (epoch + 1) % 5 == 0:
+        if (epoch + 1) % 25 == 0:
             model.save("ai_version2.keras")
-            print("model saved!")
+            print("model saved")
             with open('unique_fens.pkl', 'wb') as f:
                 pickle.dump(unique_fens, f)
             print("set saved")
@@ -156,4 +158,3 @@ model = create_model2(837)
 games = 10
 epochs = 20000
 train(games, epochs)
-
