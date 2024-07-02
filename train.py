@@ -40,7 +40,6 @@ def fen_to_vec(fen):
 unique_fens = set()
 
 """
-# Bei Bedarf auskommentieren
 with open('unique_fens.pkl', 'rb') as f:
     unique_fens = pickle.load(f)
 """
@@ -134,26 +133,27 @@ def train(games, epochs):
         X_train, y_train = generate_random_input(games)
 
         print("Epoche" + str(epoch + 1))
-        print("Das Set beinhaltet so viele FENs:f" + str(len(unique_fens)))
-        print("Das Set verbraucht: " + str(sys.getsizeof(unique_fens) / (1024 * 1024)))
+        print("Length of unique_fens: " + str(len(unique_fens)))
+        print("Size of unique_fens (in MB): " + str(sys.getsizeof(unique_fens) / (1024 * 1024)))
 
         model.fit(X_train, y_train, epochs=1, batch_size=8)
         print()
         print()
 
         if (epoch + 1) % 5 == 0:
-            model.save("karl_version3.keras")
-            print("karl gespeichert!")
+            model.save("ai_version2.keras")
+            print("model saved!")
             with open('unique_fens.pkl', 'wb') as f:
                 pickle.dump(unique_fens, f)
-            print("Set gespeichert!")
+            print("set saved")
 
         print()
         gc.collect()
 
 
-#model = load_model("karl_version1.keras")
+#model = load_model("ai_version1.keras")
 model = create_model2(837)
 games = 10
 epochs = 20000
 train(games, epochs)
+
