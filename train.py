@@ -97,7 +97,7 @@ def generate_random_fen(games):
     board = chess.Board()
     fens = []
     for i in range(games):
-        while not board.is_checkmate():
+        while not board.is_game_over():
             move = np.random.choice(list(board.legal_moves))
             board.push(move)
             fen = board.fen()
